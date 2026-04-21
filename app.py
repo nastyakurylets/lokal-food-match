@@ -76,11 +76,30 @@ if st.session_state.index < len(st.session_state.food_pool):
 else:
     st.balloons()
     st.success("Гру завершено! Ми підібрали ваш профіль.")
-    # Визначаємо топову категорію
-    top_cat = max(st.session_state.stats, key=st.session_state.stats.get)
-    st.write(f"Ви — справжній **{top_cat}**! Отримайте ваш бонус у LOKAL.")
+    
+    # --- НОВА ЛОГІКА РАХУНКУ РЕЗУЛЬТАТІВ ---
+    # Створюємо тимчасовий словник для підрахунку категорій лише для "лайків"
+    category_counts = {}
+    
+    # Проходимо по пулу страв, щоб знайти категорію кожної обраної страви
+    for record in st.session_state.stats:
+        if record["action"] == "like":
+            # Знаходимо страву в загальному списку за назвою, щоб дізнатися її категорію
+            # Ми шукаємо в food_pool, бо там ці страви вже є
+            for food in st.session_state.food_pool:
+                if food["name"] == record["item"]:
+                    cat = food["category"]
+                    category_counts[cat] = category_counts.get(cat, 0) + 1
+
+    # Визначаємо переможця
+    if category_counts:
+        top_cat = max(category_counts, key=category_counts.get)
+        st.write(f"Ви — справжній **{top_cat}**! Отримайте ваш бонус у LOKAL.")
+    else:
+        st.write("Ви не вподобали жодної страви, але ми підберемо щось особливе для вас!")
     
     st.divider()
+    # ... далі ваше опитування ...
     st.subheader("📝 Коротке опитування")
     with st.form("survey"):
         q1 = st.radio("Чи було вам цікаво свайпати страви?", ["Дуже", "Так собі", "Ні, нудно"])
