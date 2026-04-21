@@ -104,32 +104,31 @@ else:
         q3 = st.text_input("Яку страву ви б додали?")
         
         if st.form_submit_button("Надіслати відгук та отримати бонус"):
-            # --- ЛОГІКА ЗАПИСУ В ТАБЛИЦЮ ---
             try:
-                # 2. Встановлюємо з'єднання
                 conn = st.connection("gsheets", type=GSheetsConnection)
                 
-                # Створюємо новий рядок даних
-                new_row = pd.DataFrame([{
+                # Створюємо новий рядок
+                new_row = {
                     "Timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                     "Result": top_cat,
                     "Q1_Interest": q1,
                     "Q2_Desc": q2,
                     "Q3_Suggestion": q3,
                     "Full_Stats": str(st.session_state.stats)
-                }])
+                }
                 
-                # 3. Зчитуємо існуючі дані та додаємо новий рядок
-                existing_data = conn.read(worksheet="Sheet1") # Назва листа в таблиці
-                updated_df = pd.concat([existing_data, new_row], ignore_index=True)
+                # Читаємо поточні дані
+                existing_data = conn.read(worksheet="Sheet1")
                 
-                # 4. Оновлюємо таблицю
+                # Додаємо новий рядок через pandas
+                updated_df = pd.concat([existing_data, pd.DataFrame([new_row])], ignore_index=True)
+                
+                # Записуємо назад
                 conn.update(worksheet="Sheet1", data=updated_df)
                 
-                st.success("Дякуємо за ваш внесок!")
+                st.success("✅ Дані надіслано! Твій бонус: LOKAL_SMART")
             except Exception as e:
-                st.error("Помилка при збереженні.")
-                print(f"Error: {e}")
+                st.error(f"Помилка при збереженні: {e}")
 # --- СТИЛІ ---
 st.markdown("""
     <style>
