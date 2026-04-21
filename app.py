@@ -1,7 +1,7 @@
 import streamlit as st
 import random
 import time
-from streamlit_gsheets import GSheetsConnection # <--- 1. Додаємо імпорт
+import requests
 import pandas as pd
 
 # --- НАЛАШТУВАННЯ ТА ДАНІ ---
@@ -28,7 +28,6 @@ if 'food_pool' not in st.session_state:
 
 # --- ФУНКЦІЇ АНАЛІТИКИ ---
 def log_action(food_name, action):
-    # Записуємо дію (лайк/дизлайк) та час
     st.session_state.stats.append({
         "item": food_name,
         "action": action,
@@ -41,18 +40,19 @@ st.title("Food Match")
 if st.session_state.index < len(st.session_state.food_pool):
     current_food = st.session_state.food_pool[st.session_state.index]
     
-    # Прогрес
-    progress = st.session_state.index / MAX_SWIPES
-    st.progress(progress)
+    st.progress(st.session_state.index / MAX_SWIPES)
 
-    # КАРТКА (Зображення або Опис)
     if not st.session_state.flipped:
-        st.image(current_food['img'], use_container_width=True)
-        if st.button("ℹ️ Що всередині? (Детальніше)"):
+        # Безпечне відображення картинки
+        try:
+            st.image(current_food['img'], width=None) # width=None автоматично розтягує
+        except:
+            st.warning(f"Фото {current_food['img']} не знайдено.")
+            
+        if st.button("ℹ️ Що всередині?"):
             st.session_state.flipped = True
             st.rerun()
     else:
-        # "Зворотний бік"
         st.info(f"**{current_food['name']}**\n\n{current_food['desc']}")
         if st.button("⬅️ Назад до фото"):
             st.session_state.flipped = False
@@ -60,7 +60,6 @@ if st.session_state.index < len(st.session_state.food_pool):
 
     st.subheader(current_food['name'])
     
-    # Кнопки вибору
     col1, col2 = st.columns(2)
     with col1:
         if st.button("❌", use_container_width=True, key="dislike"):
@@ -88,13 +87,9 @@ else:
                     cat = food["category"]
                     category_counts[cat] = category_counts.get(cat, 0) + 1
 
-    if category_counts:
-        top_cat = max(category_counts, key=category_counts.get)
-        st.success(f"Ви — справжній **{top_cat}**!")
-    else:
-        top_cat = "Не визначено"
-        st.write("Ви справжній гурман, якого важко здивувати!")
-
+    top_cat = max(category_counts, key=category_counts.get) if category_counts else "Гурман"
+    st.success(f"Ви — справжній **{top_cat}**!")
+    
     st.divider()
     st.subheader("📝 Коротке опитування")
     
@@ -103,39 +98,24 @@ else:
         q2 = st.radio("Чи допомогли описи страв зробити вибір?", ["Так", "Ні", "Не відкривав їх"])
         q3 = st.text_input("Яку страву ви б додали?")
         
-        if st.form_submit_button("Надіслати відгук та отримати бонус"):
+        if st.form_submit_button("Надіслати відгук"):
             try:
-                conn = st.connection("gsheets", type=GSheetsConnection)
+                # ВСТАВЛЯЄМО ВАШІ ID ТУТ
+                form_url = "https://docs.google.com/forms/d/e/1FAIpQLSfoP8pa1VyCzdiX-I8fs5O3KFdErfMTcntv8DPp-hIbn6B4OQ/formResponse"
                 
-                # 1. Готуємо дані
-                new_row = {
-                    "Timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-                    "Result": top_cat,
-                    "Q1_Interest": q1,
-                    "Q2_Desc": q2,
-                    "Q3_Suggestion": q3,
-                    "Full_Stats": str(st.session_state.stats)
+                payload = {
+                    "entry.1137718514": time.strftime("%Y-%m-%d %H:%M:%S"), # Timestamp
+                    "entry.2014803387": top_cat,                             # Result
+                    "entry.2083659996": q1,                                  # Q1
+                    "entry.1571929600": q2,                                  # Q2
+                    "entry.1415007899": q3,                                  # Q3
+                    "entry.1902153314": str(st.session_state.stats)          # Full Stats
                 }
                 
-                # 2. Читаємо поточні дані
-                # Якщо таблиця порожня, створюємо DataFrame з нашими заголовками
-                try:
-                    df = conn.read(worksheet="Sheet1")
-                except:
-                    df = pd.DataFrame(columns=["Timestamp", "Result", "Q1_Interest", "Q2_Desc", "Q3_Suggestion", "Full_Stats"])
-                
-                # 3. Додаємо новий рядок
-                df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-                
-                # 4. Оновлюємо всю таблицю (це найнадійніший метод для st-gsheets-connection)
-                conn.update(worksheet="Sheet1", data=df)
-                
-                st.success("Дані надіслано!")
-                # Зберігаємо копію в консоль на всякий випадок
-                print(f"SUCCESSFUL_SUBMISSION: {new_row}")
-                
-            except Exception as e:
-                st.error(f"Помилка при збереженні: {e}")
+                requests.post(form_url, data=payload)
+                st.success("Дані надіслано! Дякуємо!")
+            except:
+                st.error("Помилка")
 # --- СТИЛІ ---
 st.markdown("""
     <style>
