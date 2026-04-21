@@ -1,6 +1,8 @@
 import streamlit as st
 import random
 import time
+from streamlit_gsheets import GSheetsConnection # <--- 1. Додаємо імпорт
+import pandas as pd
 
 # --- НАЛАШТУВАННЯ ТА ДАНІ ---
 MAX_SWIPES = 11 # Обмежуємо кількість свайпів
@@ -102,22 +104,32 @@ else:
         q3 = st.text_input("Яку страву ви б додали?")
         
         if st.form_submit_button("Надіслати відгук та отримати бонус"):
-            # Формуємо дані для вашої аналітики
-            user_data = {
-                "top_category": top_cat,
-                "swipes_history": str(st.session_state.stats), # Перетворюємо список у рядок
-                "answers": [q1, q2, q3]
-            }
-            
-            # ТУТ МАГІЯ: Замість st.json ми просто дякуємо користувачу
-            st.success("✅ Дані надіслано! Твій промокод на бонус: LOKAL_SMART")
-            
-            # Логування в консоль (ви бачитимете це в логах Streamlit Cloud)
-            print(f"ANALYTICS_REPORT: {user_data}") 
-            
-            # Порада: щоб дані реально йшли в таблицю без вашої участі, 
-            # найпростіше підключити бібліотеку st-gsheets-connection
-
+            # --- ЛОГІКА ЗАПИСУ В ТАБЛИЦЮ ---
+            try:
+                # 2. Встановлюємо з'єднання
+                conn = st.connection("gsheets", type=GSheetsConnection)
+                
+                # Створюємо новий рядок даних
+                new_row = pd.DataFrame([{
+                    "Timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "Result": top_cat,
+                    "Q1_Interest": q1,
+                    "Q2_Desc": q2,
+                    "Q3_Suggestion": q3,
+                    "Full_Stats": str(st.session_state.stats)
+                }])
+                
+                # 3. Зчитуємо існуючі дані та додаємо новий рядок
+                existing_data = conn.read(worksheet="Sheet1") # Назва листа в таблиці
+                updated_df = pd.concat([existing_data, new_row], ignore_index=True)
+                
+                # 4. Оновлюємо таблицю
+                conn.update(worksheet="Sheet1", data=updated_df)
+                
+                st.success("Дякуємо за ваш внесок!")
+            except Exception as e:
+                st.error("Помилка при збереженні.")
+                print(f"Error: {e}")
 # --- СТИЛІ ---
 st.markdown("""
     <style>
