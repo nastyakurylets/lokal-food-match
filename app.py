@@ -75,48 +75,48 @@ if st.session_state.index < len(st.session_state.food_pool):
 
 else:
     st.balloons()
-    st.success("Гру завершено! Ми підібрали ваш профіль.")
+    st.header("Твій смаковий профіль готовий!")
     
-    # --- НОВА ЛОГІКА РАХУНКУ РЕЗУЛЬТАТІВ ---
-    # Створюємо тимчасовий словник для підрахунку категорій лише для "лайків"
+    # Розрахунок результату
     category_counts = {}
-    
-    # Проходимо по пулу страв, щоб знайти категорію кожної обраної страви
     for record in st.session_state.stats:
         if record["action"] == "like":
-            # Знаходимо страву в загальному списку за назвою, щоб дізнатися її категорію
-            # Ми шукаємо в food_pool, бо там ці страви вже є
             for food in st.session_state.food_pool:
                 if food["name"] == record["item"]:
                     cat = food["category"]
                     category_counts[cat] = category_counts.get(cat, 0) + 1
 
-    # Визначаємо переможця
     if category_counts:
         top_cat = max(category_counts, key=category_counts.get)
-        st.write(f"Ви — справжній **{top_cat}**! Отримайте ваш бонус у LOKAL.")
+        st.success(f"Ви — справжній **{top_cat}**!")
     else:
-        st.write("Ви не вподобали жодної страви, але ми підберемо щось особливе для вас!")
-    
+        top_cat = "Не визначено"
+        st.write("Ви справжній гурман, якого важко здивувати!")
+
     st.divider()
-    # ... далі ваше опитування ...
     st.subheader("📝 Коротке опитування")
-    with st.form("survey"):
+    
+    with st.form("survey_form", clear_on_submit=True):
         q1 = st.radio("Чи було вам цікаво свайпати страви?", ["Дуже", "Так собі", "Ні, нудно"])
         q2 = st.radio("Чи допомогли описи страв зробити вибір?", ["Так", "Ні", "Не відкривав їх"])
         q3 = st.text_input("Яку страву ви б додали?")
         
-        submitted = st.form_submit_button("Надіслати відгук")
-        if submitted:
-            # Тут ми об'єднуємо аналітику свайпів та відповіді опитування
-            final_report = {
-                "swipes": st.session_state.stats,
-                "survey": {"q1": q1, "q2": q2, "q3": q3}
+        if st.form_submit_button("Надіслати відгук та отримати бонус"):
+            # Формуємо дані для вашої аналітики
+            user_data = {
+                "top_category": top_cat,
+                "swipes_history": str(st.session_state.stats), # Перетворюємо список у рядок
+                "answers": [q1, q2, q3]
             }
-            st.write("✅ Дякуємо! Ваші відповіді допоможуть нам стати кращими.")
-            # Для тесту: виводимо лог, щоб ви могли його скопіювати
-            with st.expander("Подивитися зібрану аналітику"):
-                st.json(final_report)
+            
+            # ТУТ МАГІЯ: Замість st.json ми просто дякуємо користувачу
+            st.success("✅ Дані надіслано! Твій промокод на бонус: LOKAL_SMART")
+            
+            # Логування в консоль (ви бачитимете це в логах Streamlit Cloud)
+            print(f"ANALYTICS_REPORT: {user_data}") 
+            
+            # Порада: щоб дані реально йшли в таблицю без вашої участі, 
+            # найпростіше підключити бібліотеку st-gsheets-connection
 
 # --- СТИЛІ ---
 st.markdown("""
