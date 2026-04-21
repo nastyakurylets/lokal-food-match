@@ -107,7 +107,7 @@ else:
             try:
                 conn = st.connection("gsheets", type=GSheetsConnection)
                 
-                # Створюємо новий рядок
+                # 1. Готуємо дані
                 new_row = {
                     "Timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                     "Result": top_cat,
@@ -117,16 +117,23 @@ else:
                     "Full_Stats": str(st.session_state.stats)
                 }
                 
-                # Читаємо поточні дані
-                existing_data = conn.read(worksheet="Sheet1")
+                # 2. Читаємо поточні дані
+                # Якщо таблиця порожня, створюємо DataFrame з нашими заголовками
+                try:
+                    df = conn.read(worksheet="Sheet1")
+                except:
+                    df = pd.DataFrame(columns=["Timestamp", "Result", "Q1_Interest", "Q2_Desc", "Q3_Suggestion", "Full_Stats"])
                 
-                # Додаємо новий рядок через pandas
-                updated_df = pd.concat([existing_data, pd.DataFrame([new_row])], ignore_index=True)
+                # 3. Додаємо новий рядок
+                df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
                 
-                # Записуємо назад
-                conn.update(worksheet="Sheet1", data=updated_df)
+                # 4. Оновлюємо всю таблицю (це найнадійніший метод для st-gsheets-connection)
+                conn.update(worksheet="Sheet1", data=df)
                 
-                st.success("✅ Дані надіслано! Твій бонус: LOKAL_SMART")
+                st.success("Дані надіслано!")
+                # Зберігаємо копію в консоль на всякий випадок
+                print(f"SUCCESSFUL_SUBMISSION: {new_row}")
+                
             except Exception as e:
                 st.error(f"Помилка при збереженні: {e}")
 # --- СТИЛІ ---
